@@ -1,5 +1,6 @@
 import csv
 import os
+import re
 
 
 class CarBase:
@@ -37,7 +38,10 @@ class Truck(CarBase):
                 return False
 
         if all(list(map(_isfloat, parameters))):
-            body_length, body_width, body_height = map(float, parameters)
+            try:
+                body_length, body_width, body_height = map(float, parameters)
+            except ValueError:
+                body_length, body_width, body_height = 0.0, 0.0, 0.0
         else:
             body_length, body_width, body_height = 0.0, 0.0, 0.0
 
@@ -62,6 +66,8 @@ def get_car_list(csv_filename):
         reader = csv.reader(csv_fd, delimiter=';')
         keys = next(reader)
         for row in reader:
+            if len(row) != len(keys):
+                continue
             machine = {k: v for k, v in zip(keys, row)}
             if _isvalid(machine):
                 if machine["car_type"] == "car":
@@ -74,7 +80,7 @@ def get_car_list(csv_filename):
                                 photo_file_name=machine['photo_file_name'],
                                 carrying=machine['carrying'],
                                 body_whl=machine['body_whl'])
-                elif machine["car_type"] == "truck":
+                elif machine["car_type"] == "spec_machine":
                     car = SpecMachine(brand=machine["brand"],
                                       photo_file_name=machine['photo_file_name'],
                                       carrying=machine['carrying'],
@@ -92,6 +98,23 @@ def _isvalid(machine):
         return False
     if machine["car_type"] not in car_type:
         return False
-    if not machine["photo_file_name"].endswith(photo_file_ext):
+    if machine["car_type"] == "truck" and not re.match(r"([\d\.]*x){2}[\d\.]*$", machine['body_whl']) \
+            and machine['body_whl'] != "":
+        return False
+    if machine["brand"] == "":
+        return False
+    if machine["car_type"] == "car" and not str.isdigit(machine["passenger_seats_count"]):
+        return False
+    if machine["carrying"] == '':
+        return False
+    else:
+        try:
+            float(machine["carrying"])
+        except ValueError:
+            return False
+    ext = os.path.splitext(machine["photo_file_name"])[1]
+    if ext not in photo_file_ext:
+        return False
+    if machine["car_type"] == "spec_machine" and machine["extra"] == "":
         return False
     return True
